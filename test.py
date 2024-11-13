@@ -1,5 +1,6 @@
 import subprocess
 import unittest
+import os
 
 class TestDatabase(unittest.TestCase):
 
@@ -9,11 +10,16 @@ class TestDatabase(unittest.TestCase):
         compile_process = subprocess.run(["gcc", "main.c", "-o", "main.o"], capture_output=True, text=True)
         if compile_process.returncode != 0:
             raise RuntimeError(f"Compilation failed:\n{compile_process.stderr}")
+    
+    def setUp(self):
+        # Remove the database file before each test to ensure a clean slate
+        if os.path.exists("test.db"):
+            os.remove("test.db")
 
     def run_script(self, commands):
         # Run the compiled C program and feed it commands
-        process = subprocess.Popen("./main.o", stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        stdout, stderr = process.communicate("\n".join(commands))
+        process = subprocess.Popen(["./main.o", "test.db"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        stdout, stderr = process.communicate("\n".join(commands) + "\n")
         return stdout.splitlines()
     
     def assertMatchArray(self, result, expected_output):
@@ -24,7 +30,7 @@ class TestDatabase(unittest.TestCase):
         result = self.run_script([
             "insert 1 user1 person1@example.com",
             "select",
-            ".exit ",
+            ".exit",
         ])
         expected_output = [
             "db > Executed.",
@@ -33,10 +39,34 @@ class TestDatabase(unittest.TestCase):
             "db > "
         ]
         self.assertMatchArray(result, expected_output)
+    
+    def test_data_persistence_after_exit(self):
+        # Run first script to insert a row and exit
+        result1 = self.run_script([
+            "insert 1 user1 person1@example.com",
+            ".exit",
+        ])
+        expected_output1 = [
+            "db > Executed.",
+            "db > ",
+        ]
+        self.assertMatchArray(result1, expected_output1)
+
+        # Run a second script to verify the row is still there after reopening
+        result2 = self.run_script([
+            "select",
+            ".exit",
+        ])
+        expected_output2 = [
+            "db > (1, user1, person1@example.com)",
+            "Executed.",
+            "db > ",
+        ]
+        self.assertMatchArray(result2, expected_output2)
 
     def test_table_full_error(self):
         script = [f"insert {i} user{i} person{i}@example.com" for i in range(1, 1402)]
-        script.append(".exit ")
+        script.append(".exit")
         result = self.run_script(script)
         # Check the second-to-last line for the "table full" error
         self.assertEqual(result[-2], "db > Error: Table full.")
@@ -47,7 +77,7 @@ class TestDatabase(unittest.TestCase):
         script = [
             f"insert 1 {long_username} {long_email}",
             "select",
-            ".exit ",
+            ".exit",
         ]
         result = self.run_script(script)
         expected_output = [
@@ -64,7 +94,7 @@ class TestDatabase(unittest.TestCase):
         script = [
             f"insert 1 {long_username} {long_email}",
             "select",
-            ".exit ",
+            ".exit",
         ]
         result = self.run_script(script)
         expected_output = [
@@ -78,7 +108,7 @@ class TestDatabase(unittest.TestCase):
         script = [
             "insert -1 cstack foo@bar.com",
             "select",
-            ".exit ",
+            ".exit",
         ]
         result = self.run_script(script)
         expected_output = [
