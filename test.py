@@ -117,6 +117,46 @@ class TestDatabase(unittest.TestCase):
             "db > "
         ]
         self.assertMatchArray(result, expected_output)
+    
+    def test_print_btree_structure(self):
+        script = [
+            "insert 3 user3 person3@example.com",
+            "insert 1 user1 person1@example.com",
+            "insert 2 user2 person2@example.com",
+            ".btree",
+            ".exit"
+        ]
+        result = self.run_script(script)
+        expected_output = [
+            "db > Executed.",
+            "db > Executed.",
+            "db > Executed.",
+            "db > Tree:",
+            "leaf (size 3)",
+            "  - 0 : 3",
+            "  - 1 : 1",
+            "  - 2 : 2",
+            "db > "
+        ]
+        self.assertMatchArray(result, expected_output)
+
+    def test_print_constants(self):
+        script = [
+            ".constants",
+            ".exit",
+        ]
+        result = self.run_script(script)
+        expected_output = [
+            "db > Constants:",
+            "ROW_SIZE: 293",
+            "COMMON_NODE_HEADER_SIZE: 6",
+            "LEAF_NODE_HEADER_SIZE: 10",
+            "LEAF_NODE_CELL_SIZE: 297",
+            "LEAF_NODE_SPACE_FOR_CELLS: 4086",
+            "LEAF_NODE_MAX_CELLS: 13",
+            "db > ",
+        ]
+        self.assertMatchArray(result, expected_output)
 
 if __name__ == "__main__":
     unittest.main()
