@@ -132,10 +132,10 @@ class TestDatabase(unittest.TestCase):
             "db > Executed.",
             "db > Executed.",
             "db > Tree:",
-            "leaf (size 3)",
-            "  - 0 : 3",
-            "  - 1 : 1",
-            "  - 2 : 2",
+            "- leaf (size 3)",
+            "  - 1",
+            "  - 2",
+            "  - 3",
             "db > "
         ]
         self.assertMatchArray(result, expected_output)
@@ -157,6 +157,55 @@ class TestDatabase(unittest.TestCase):
             "db > ",
         ]
         self.assertMatchArray(result, expected_output)
+    
+    def test_duplicate_id_error(self):
+        script = [
+            "insert 1 user1 person1@example.com",
+            "insert 1 user1 person1@example.com",
+            "select",
+            ".exit",
+        ]
+        result = self.run_script(script)
+        expected_output = [
+            "db > Executed.",
+            "db > Error: Duplicate key.",
+            "db > (1, user1, person1@example.com)",
+            "Executed.",
+            "db > ",
+        ]
+        self.assertMatchArray(result, expected_output)
+
+    def test_3_leaf_node_btree_structure(self):
+        script = [f"insert {i} user{i} person{i}@example.com" for i in range(1, 15)]
+        script.append(".btree")
+        script.append("insert 15 user15 person15@example.com")
+        script.append(".exit")
+        print(script)
+        result = self.run_script(script)
+        expected_output = [
+            "db > Tree:",
+            "- internal (size 1)",
+            "  - leaf (size 7)",
+            "    - 1",
+            "    - 2",
+            "    - 3",
+            "    - 4",
+            "    - 5",
+            "    - 6",
+            "    - 7",
+            "  - key 7",
+            "  - leaf (size 7)",
+            "    - 8",
+            "    - 9",
+            "    - 10",
+            "    - 11",
+            "    - 12",
+            "    - 13",
+            "    - 14",
+            "db > Need to implement searching an internal node",
+        ]
+        # Only compare the specific part of the result with the tree structure and error message
+        self.assertMatchArray(result[14:], expected_output)
 
 if __name__ == "__main__":
     unittest.main()
