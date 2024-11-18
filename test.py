@@ -3,11 +3,14 @@ import unittest
 import os
 
 class TestDatabase(unittest.TestCase):
+    DATABASE_PATH = "./main.o"  # Path to your compiled database binary
+    TEST_DB_PATH = "test.db"  # Path to your test database file
+
 
     @classmethod
     def setUpClass(cls):
         # Compile the C program before running tests
-        compile_process = subprocess.run(["gcc", "main.c", "-o", "main.o"], capture_output=True, text=True)
+        compile_process = subprocess.run(["make"], capture_output=True, text=True)
         if compile_process.returncode != 0:
             raise RuntimeError(f"Compilation failed:\n{compile_process.stderr}")
     
@@ -20,8 +23,23 @@ class TestDatabase(unittest.TestCase):
         # Run the compiled C program and feed it commands
         process = subprocess.Popen(["./main.o", "test.db"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         stdout, stderr = process.communicate("\n".join(commands) + "\n")
-        return stdout.splitlines()
+        out = stdout.splitlines()
+        # print(out)
+        return out
     
+    """ def run_script(self, commands):
+        try:
+            # Run the compiled C program and feed it commands
+            process = subprocess.Popen(["./main.o", "test.db"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            stdout, stderr = process.communicate("\n".join(commands) + "\n")
+            if stderr:
+                print(f"Error from program: {stderr.strip()}")
+            out = stdout.splitlines()
+            print("Captured Output:", out)
+            return out
+        except Exception as e:
+            self.fail(f"Error running script: {e}") """
+
     def assertMatchArray(self, result, expected_output):
         # Sort both lists for order-agnostic comparison
         self.assertEqual(sorted(result), sorted(expected_output), f"\nExpected: {expected_output}\nGot: {result}")
@@ -68,8 +86,13 @@ class TestDatabase(unittest.TestCase):
         script = [f"insert {i} user{i} person{i}@example.com" for i in range(1, 1402)]
         script.append(".exit")
         result = self.run_script(script)
-        # Check the second-to-last line for the "table full" error
-        self.assertEqual(result[-2], "db > Error: Table full.")
+        
+        expected_output = [
+            "db > Executed.",
+            "db > Need to implement updating parent after split",
+        ]
+        self.assertGreater(len(result), 1, "Output is too short; possible crash.")
+        self.assertMatchArray(result[-2:], expected_output)
     
     def test_insert_max_length_strings(self):
         long_username = "a" * 32
@@ -182,6 +205,7 @@ class TestDatabase(unittest.TestCase):
         script.append(".exit")
         print(script)
         result = self.run_script(script)
+        print(result)
         expected_output = [
             "db > Tree:",
             "- internal (size 1)",
@@ -202,10 +226,45 @@ class TestDatabase(unittest.TestCase):
             "    - 12",
             "    - 13",
             "    - 14",
-            "db > Need to implement searching an internal node",
+            "db > Executed.",
+            "db > ",
         ]
         # Only compare the specific part of the result with the tree structure and error message
         self.assertMatchArray(result[14:], expected_output)
+    
+    def test_multi_level_tree_select(self):
+        # Insert multiple rows to create a multi-level tree and select all rows
+        script = []
+        for i in range(1, 16):
+            script.append(f"insert {i} user{i} person{i}@example.com")
+        script.append("select")
+        script.append(".exit")
+
+        result = self.run_script(script)
+
+        expected_output = [
+            "db > (1, user1, person1@example.com)",
+            "(2, user2, person2@example.com)",
+            "(3, user3, person3@example.com)",
+            "(4, user4, person4@example.com)",
+            "(5, user5, person5@example.com)",
+            "(6, user6, person6@example.com)",
+            "(7, user7, person7@example.com)",
+            "(8, user8, person8@example.com)",
+            "(9, user9, person9@example.com)",
+            "(10, user10, person10@example.com)",
+            "(11, user11, person11@example.com)",
+            "(12, user12, person12@example.com)",
+            "(13, user13, person13@example.com)",
+            "(14, user14, person14@example.com)",
+            "(15, user15, person15@example.com)",
+            "Executed.", 
+            "db > "
+        ]
+
+        # Assert that the relevant portion of the output matches the expected output
+        self.assertEqual(result[15:], expected_output)
+
 
 if __name__ == "__main__":
     unittest.main()
