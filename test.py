@@ -26,19 +26,6 @@ class TestDatabase(unittest.TestCase):
         out = stdout.splitlines()
         # print(out)
         return out
-    
-    """ def run_script(self, commands):
-        try:
-            # Run the compiled C program and feed it commands
-            process = subprocess.Popen(["./main.o", "test.db"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            stdout, stderr = process.communicate("\n".join(commands) + "\n")
-            if stderr:
-                print(f"Error from program: {stderr.strip()}")
-            out = stdout.splitlines()
-            print("Captured Output:", out)
-            return out
-        except Exception as e:
-            self.fail(f"Error running script: {e}") """
 
     def assertMatchArray(self, result, expected_output):
         # Sort both lists for order-agnostic comparison
@@ -173,9 +160,9 @@ class TestDatabase(unittest.TestCase):
             "db > Constants:",
             "ROW_SIZE: 293",
             "COMMON_NODE_HEADER_SIZE: 6",
-            "LEAF_NODE_HEADER_SIZE: 10",
+            "LEAF_NODE_HEADER_SIZE: 14",
             "LEAF_NODE_CELL_SIZE: 297",
-            "LEAF_NODE_SPACE_FOR_CELLS: 4086",
+            "LEAF_NODE_SPACE_FOR_CELLS: 4082",
             "LEAF_NODE_MAX_CELLS: 13",
             "db > ",
         ]
@@ -203,9 +190,7 @@ class TestDatabase(unittest.TestCase):
         script.append(".btree")
         script.append("insert 15 user15 person15@example.com")
         script.append(".exit")
-        print(script)
         result = self.run_script(script)
-        print(result)
         expected_output = [
             "db > Tree:",
             "- internal (size 1)",
@@ -234,14 +219,13 @@ class TestDatabase(unittest.TestCase):
     
     def test_multi_level_tree_select(self):
         # Insert multiple rows to create a multi-level tree and select all rows
-        script = []
-        for i in range(1, 16):
-            script.append(f"insert {i} user{i} person{i}@example.com")
+        script = [f"insert {i} user{i} person{i}@example.com" for i in range(1, 16)]
         script.append("select")
         script.append(".exit")
 
         result = self.run_script(script)
 
+        # Expected output for the select command
         expected_output = [
             "db > (1, user1, person1@example.com)",
             "(2, user2, person2@example.com)",
@@ -258,11 +242,11 @@ class TestDatabase(unittest.TestCase):
             "(13, user13, person13@example.com)",
             "(14, user14, person14@example.com)",
             "(15, user15, person15@example.com)",
-            "Executed.", 
+            "Executed.",
             "db > "
         ]
 
-        # Assert that the relevant portion of the output matches the expected output
+        # Verify that the output from index 15 matches the expected rows
         self.assertEqual(result[15:], expected_output)
 
 
