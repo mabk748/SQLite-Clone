@@ -19,6 +19,8 @@
 
 #define PAGE_SIZE 4096
 
+#define INVALID_PAGE_NUM UINT32_MAX
+
 typedef struct
 {
     char* buffer;
